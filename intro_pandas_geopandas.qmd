@@ -1,0 +1,201 @@
+---
+title: "Intro to Pandas and GeoPandas"
+jupyter: "python3"
+---
+
+ - To work with dataframes
+ - 
+
+## Modules
+
+
+```{python}
+#| output: false
+import sys
+!{sys.executable} -m pip install pandas
+import pandas as pd
+```
+
+## Creating a pandas dataframe
+
+ - Dataframes can be created by converting list to dictionaries to dataframe
+
+```{python}
+satellites = ['Landsat', 'Sentinel', 'PlanetScope', 'Iridium', 'OneWeb']
+year = [1972, 2013, 2015, 1999, 2021]
+government_owned = [True, True, False, False, False]
+mission = ['Remote sensing', 'Remote sensing', \
+     'Remote sensing', 'Communication', 'Communication']
+```
+
+ - Now we go for the list creation
+
+```{python}
+sat_data = {
+    'satellite': satellites,
+    'year': year,
+    'government_owned': government_owned,
+    'mission': mission
+}
+sat_data
+```
+
+ - Then, from list to datafram
+
+```{python}
+data = pd.DataFrame(sat_data)
+data
+```
+
+## Explore the dataframe
+
+```{python}
+data.head(2)
+```
+
+```{python}
+data.tail(3)
+```
+
+```{python}
+# Get the columns
+data.columns
+
+# Convert columns to list
+list(data.columns)
+```
+
+```{python}
+# Get a single column
+data['satellite']
+
+# Access multiple columns
+data[['satellite', 'year']]
+```
+
+```{python}
+# Get individual rows
+data.loc[4]
+
+# Get range of observations
+data.loc[2:4]
+```
+
+```{python}
+# Subsetting (satellites launched after 2015)
+data[data["year"] >= 2015]
+
+# By two criteria
+data[data["year"] >= 2015][data['mission'] == 'Remote sensing']
+```
+
+```{python}
+# Add empty column
+data['mission_code'] = ''
+data
+```
+
+## Intro to Geopandas
+
+ - It can hold a geometry column which enables cartersian geometry operations
+ - CRS can be store as an attribute on an object. Automatically set when
+ loading from a file.
+ - Objects can be transformed to a new CRS using `to_crs()` method
+
+```{python}
+#| output: false 
+!{sys.executable} -m pip install geopandas
+import geopandas as gpd
+```
+
+### Reading a vector shapefile data
+
+ - from shapefile data to geopandas dataframe
+
+```{python}
+import os
+
+# Get current directory
+current_dir = os.getcwd()
+print(current_dir)
+
+# Create path
+path = current_dir + '/files' + '/gmu.shp'
+print(path)
+```
+
+```{python}
+# Load the file
+data = gpd.read_file(path, crs='epsg:4326')
+print(data)
+```
+
+### Basic geopandas functions
+
+ - Change the CRS
+
+```{python}
+# from original decimal degrees (espg:4326) to meters (espg:3857)
+data = data.to_crs('epsg:3857')
+print(data)
+```
+
+ - Calculate the area of the polygon (given that we have the CRS in m)
+ - Advantage of the following example is that we can perform the functions as a normal pandas dataframe
+
+```{python}
+data['area'] = data['geometry'].area
+print(data)
+```
+
+ - Let's take that area from m to km
+
+```{python}
+data['area_km2'] = data['area']/1e6
+print(data)
+```
+
+ - Loop over a geodataframe is the same as in a dataframe
+ - `.iterrows` is specific to geodataframes and dataframes
+ - This will return the row index and then the row info
+
+```{python}
+for row in data.iterrows():
+    print(row)
+```
+
+ - The following will return just the index position
+
+```{python}
+for row in data.iterrows():
+    print(row[0])
+```
+
+ - The following will return the row information
+
+```{python}
+for row in data.iterrows():
+    print(row[1])
+```
+
+ - An example to extract the geometry
+
+```{python}
+for row in data.iterrows():
+    print(row[1]['geometry'])
+```
+
+ - Let's do some manipulation within the loop
+
+```{python}
+for row in data.iterrows():
+
+    # Calculate the area in km2
+    area_km2 = (row[1]['geometry'].area / 1e6)
+
+    # Round the area to 1 decimal place
+    area_km2 = round(area_km2, 1)
+
+    print('The area of GMU campus is {} square kilometers'.format(area_km2))
+```
+

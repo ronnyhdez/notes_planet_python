@@ -1,0 +1,154 @@
+---
+title: "Manipulating raster images"
+jupyter: "python3"
+---
+
+ - Clipping images
+ - Writting raster images
+
+```{python}
+import rasterio
+from matplotlib import pyplot as plt
+import numpy as np
+```
+
+```{python}
+image_file = "files/20220820_154153_46_248f_3B_AnalyticMS.tif"
+my_raster_image = rasterio.open(image_file)
+```
+
+```{python}
+def scales(band):
+    return band / 7000
+
+
+blue = scales(my_raster_image.read(1))
+green = scales(my_raster_image.read(2))
+red = scales(my_raster_image.read(3))
+
+# Stack them into a single image for a true color composite
+my_image = np.dstack((red, green, blue))
+plt.imshow(my_image)
+```
+
+ - Remember that in the image above, the axis are not the values of the pixels, instead they are the **coordinates of each pixel**
+
+ - To clip, we need to define an AoI
+ - We can get the bounding box coordinates of our current image
+
+```{python}
+xmin, ymin, xmax, ymax = my_raster_image.bounds
+print(xmin, ymin, xmax, ymax)
+```
+
+ - We can get the range of the bounds
+
+```{python}
+x_range = xmax - xmin
+y_range = ymax - ymin
+print(round(x_range), round(y_range))
+```
+
+ - We can reduce the maximum values to get an AoI inside the image
+
+```{python}
+xmin, ymin, xmax, ymax = my_raster_image.bounds
+
+x_range = xmax - xmin
+y_range = ymax - ymin
+print(round(x_range), round(y_range))
+
+print("Initial values are {}, {}, {}, and {}".format(
+    round(xmin),
+    round(ymin),
+    round(xmax),
+    round(ymax)
+))
+
+xmin = xmin + (x_range / 3)
+ymin = ymin + (y_range / 3)
+xmax = xmax - (x_range / 3)
+ymax = ymax - (y_range / 3)
+
+print("Final values are {}, {}, {}, and {}".format(
+    round(xmin),
+    round(ymin),
+    round(xmax),
+    round(ymax)
+))
+``` 
+
+ - Now that we have the values, we can create the geojson polygon
+
+```{python}
+my_geojson = [{
+	"type": "Polygon", 
+	"coordinates": [ 
+	  [
+		[xmin, ymin],
+		[xmax, ymin],
+		[xmax, ymax],
+		[xmin, ymax],
+		[xmin, ymin]
+	  ],
+	]
+  }]
+
+my_geojson
+```
+
+ - With the geojson created, now we need to use the masking process
+ to clip our image.
+ - If an error message appears such as 'No valid geometry objects found for rasterize', make sure the geojson object is correct.
+
+```{python}
+from rasterio.mask import mask
+
+with rasterio.open(image_file) as img:
+    clipped, transform = mask(img, my_geojson, crop=True)
+
+print(clipped)
+
+clipped.shape
+```
+
+ - Let's check the clipped image
+
+```{python}
+def scales(band):
+    return band / 7000
+
+blue = scales(clipped[1])
+green = scales(clipped[2])
+red = scales(clipped[3])
+
+# Stack them into a single image for a true color composite
+my_image_clipped = np.dstack((red, green, blue))
+
+plt.imshow(my_image_clipped)
+```
+
+ - The clipped object can be exported 
+ - rasterio.open can write with 'w' parameter
+ - `**meta` will indicate to write metadata
+ - First we need to copy metadata from original image and update it with the new height/width
+
+```{python}
+meta = my_raster_image.meta.copy()
+
+meta.update(
+    {
+        "transform": transform,
+        "height": clipped.shape[1],
+        "width": clipped.shape[2]
+    }
+)
+
+print(meta)
+```
+
+```{python}
+with rasterio.open('clipped.tif', 'w', **meta) as my_writer_object:
+    my_writer_object.write(clipped)
+```
+

@@ -1,0 +1,184 @@
+---
+title: "Intro to shapely"
+jupyter: "python3"
+---
+
+ - Basic spatial context on geometries
+ - Shapely allows to handing different types of objects
+ - [Shapely documentation](https://shapely.readthedocs.io/en/stable/manual.html)
+
+
+## Modules
+
+```{python}
+import sys
+
+!{sys.executable} -m pip install shapely
+from shapely.geometry import Point
+```
+
+
+## Points
+
+ - Create and explore a `Point` object
+
+```{python}
+
+my_point = Point(1.15, 2.43)
+print(my_point)
+```
+
+
+```{python}
+my_point.geom_type
+```
+
+
+```{python}
+my_point
+```
+
+ - Creating a second point and explore relations
+
+```{python}
+my_point_2 = Point(2, 3)
+print(my_point_2)
+```
+
+
+```{python}
+dist = my_point.distance(my_point_2)
+print(dist)
+```
+
+ - **CRS: Shapely always treat objects as if they were in the same CRS**
+
+ - One point as just one single coordinate will have 0 area and 0 length
+
+```{python}
+print(my_point.area, my_point.length)
+```
+
+ - The x-y bounding box will be a tuple with `minx`, `miny`, `maxx`, `maxy`
+
+```{python}
+print(my_point.bounds)
+```
+
+ - To access the underlaying coordinates of the shapely object
+
+
+```{python}
+# This will return the coordinate sequence
+print(my_point.coords)
+
+# Transforming it to a list, will return the values
+print(list(my_point.coords))
+```
+
+## LineString
+
+```{python}
+from shapely.geometry import LineString
+```
+
+ - Create and explore a `LineString` object
+
+```{python}
+my_line = LineString([(2, 3), (3, 4)])
+my_line 
+```
+
+```{python}
+my_line.geom_type 
+```
+
+ - Like `Point`, there is no area, but there is length
+ - **Length is going to depend on the CRS**
+
+```{python}
+my_line.area
+```
+
+```{python}
+my_line.length
+```
+
+ - A line also have bounds
+
+```{python}
+my_line.bounds
+```
+
+ - We can get the CRS
+
+```{python}
+print(list(my_line.coords))
+```
+
+## Polygons
+
+
+```{python}
+from shapely.geometry import Polygon
+```
+
+ - Create and explore a `Polygon`
+
+```{python}
+my_polygon = Polygon([(2, 2), (3, 3), (2, 3), (2, 2)])
+my_polygon
+```
+
+
+```{python}
+my_polygon.geom_type
+```
+
+ - Check the area (Remember to set CRS to something to meters)
+ 
+```{python}
+area = my_polygon.area
+print(area)
+```
+
+ - We can check the length of the polygon
+
+```{python}
+length = my_polygon.length
+print(length)
+```
+
+ - Or we can retrieve the bounds of the polygon. This will return the
+ minimum and the maximum coordinates axis in a tuple.
+
+```{python}
+bounds = my_polygon.bounds
+print(bounds)
+```
+
+ - We can create a polygon with internal polygons
+
+```{python}
+exterior = [(0, 0), (0, 2), (2, 2), (2, 0), (0, 0)]
+interior = [(1, 0), (0.5, 0.5), (1, 1), (1.5, 0.5), (1, 0)][::-1]
+my_polygon_2 = Polygon(exterior, [interior])
+my_polygon_2
+```
+
+ - To access the interior polygon coordinates
+
+```{python}
+# this is a shapely object in a list
+list(my_polygon_2.interiors)
+```
+
+```{python}
+# This is the actual polygon interior
+list(my_polygon_2.interiors)[0]
+```
+
+```{python}
+# A list of coordinate tuples
+list(my_polygon_2.interiors[0].coords)
+```

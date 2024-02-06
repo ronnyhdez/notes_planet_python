@@ -1,0 +1,104 @@
+---
+title: "Working with multiband imagery"
+jupyter: "python3"
+---
+
+ - Rasterio stands for raster input/output
+ - Rasterio can read formats such as Geotiff, which then provides a API
+based on N-D arrays
+ - ndarrays are usually fixed-size multidimensional containers of items
+ of the same size and type.
+
+```{python}
+#| output: false
+import sys # Seems this is necessary to install and import rasterio
+# !{sys.executable} -m pip install rasterio 
+import os
+import rasterio
+import numpy as np
+```
+
+## Data import
+
+```{python}
+image_filepath = "files/20220820_154153_46_248f_3B_AnalyticMS.tif"
+my_raster_image = rasterio.open(image_filepath)
+```
+
+ - How many bands do I have?
+
+```{python}
+my_raster_image.count
+```
+
+ - How many columns and rows do we have?
+
+```{python}
+my_raster_image.width
+my_raster_image.height
+```
+
+ - Unpack the different multiband layers into numpy arrays
+ - This is according to the planet product documentation
+ - There are better packages to do this, but here is an example to
+ understand it better
+
+```{python}
+blue, green, red, nir = my_raster_image.read()
+```
+
+ - explore the blue band
+
+```{python}
+blue
+```
+
+ - Plot the individual bands
+
+```{python}
+# !{sys.executable} -m pip install matplotlib
+from matplotlib import pyplot
+
+fig = pyplot.imshow(blue, cmap="Blues")
+pyplot.colorbar()
+pyplot.show()
+```
+
+
+```{python}
+fig = pyplot.imshow(nir, cmap="Greys")
+pyplot.colorbar()
+pyplot.show()
+```
+
+ - Use blended color maps for each layer
+
+```{python}
+fig = pyplot.imshow(blue)
+fig.set_cmap('gist_earth')
+pyplot.colorbar()
+pyplot.show()
+```
+
+## Multilayer composite image
+
+ - To plot multiple layers at once, we need to stack the bands we
+ want to combine
+ - For standar image, we can use RGB
+
+```{python}
+# function to scale values for display purposes
+def scale(band):
+    return band / 11000
+
+# TODO: Find why when scaling with 1000, plot image does not work
+
+
+blue = scale(my_raster_image.read(1))
+green = scale(my_raster_image.read(2))
+red = scale(my_raster_image.read(3))
+
+rgb = np.dstack((red, green, blue))
+
+pyplot.imshow(rgb)
+```

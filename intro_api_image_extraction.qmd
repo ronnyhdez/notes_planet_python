@@ -1,0 +1,16 @@
+---
+title: "Intro API image extraction (Planet)"
+jupyter: "python3"
+---
+
+```{python}
+# | output: false
+import sys
+# !{sys.executable} -m pip install planet
+import os
+import planet
+```
+
+
+ 
+

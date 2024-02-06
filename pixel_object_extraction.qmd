@@ -1,0 +1,166 @@
+---
+title: "Pixel Object Extraction"
+jupyter: "python3"
+---
+
+ - Used for object detection and extraction with a simple approach
+ - No ML or DL used for this method
+ - Indices can become handy for this
+ - This can work for convert pixels to shapes and then the extraction
+
+```{python}
+import rasterio
+from rasterio.plot import show
+from rasterio.features import shapes
+import numpy as np
+import geopandas as gpd
+import matplotlib.pyplot as plt
+```
+
+```{python}
+my_raster_image = rasterio.open("files/shenandoah_valley.tif")
+
+## This is a planet scope
+## Order of the image is blue, green, red, infrared
+## For a reed-green-blue true color composite, we order 3,2,1
+## Scaling is similar matplotblib, values need to be between 0-1
+
+rasterio.plot.show(
+    my_raster_image.read([3, 2, 1]) / 7000,
+    transform=my_raster_image.transform
+)
+```
+
+```{python}
+# How many bands/dimensions?
+my_raster_image.count
+
+# Heigths and widths (rows and columns)
+my_raster_image.height
+my_raster_image.width
+```
+
+```{python}
+red = np.float32(my_raster_image.read(3))
+green = np.float32(my_raster_image.read(2))
+blue = np.float32(my_raster_image.read(1))
+nir = np.float32(my_raster_image.read(4))
+
+nir
+```
+
+ - Now, we need to calculate NDWI
+ - We will need a new array
+
+```{python}
+water_index = np.zeros(nir.shape)
+water_index
+```
+
+ - Now that we have our empty array, we can calculate NDWI with
+ the bands we read before.
+ - Interesting way to calculate the index and fill the new array, all
+ with separate objects.
+ - I thought that I could be better creating a new dimension. Or not?
+
+```{python}
+water_index = ((green - nir) / (green + nir))
+water_index.shape
+water_index
+```
+
+ - So, now we have the array with the values. We can check how the index
+ values looks like
+
+```{python}
+plt.imshow(water_index)
+plt.colorbar(shrink = 0.7)
+```
+ 
+ - Time to create a classification of those values based on a threshold.
+
+```{python}
+water_index[(water_index > 0)] = 1
+water_index[(water_index <= 0)] = 0
+
+plt.imshow(water_index)
+plt.colorbar(shrink=0.7)
+```
+
+  - Now we need to convert the new array from int64 to int32
+  - I have no idea why. Although it seems it was already int32
+
+```{python}
+water_index = water_index.astype('float32')
+water_index
+```
+
+ - Now, we are going to convert the data into a shape
+
+```{python}
+my_shapes = shapes(water_index)
+my_shapes
+```
+
+ - What we had before was a numpy list of list. We can extract the 
+ values using list comprehension
+
+```{python}
+# [i for i in my_shapes]
+```
+
+ - Now, the coordinates we have so far are in a raster pixel space, and
+ we need to convert them into geographic ones.
+ - We can create a function to achieve this.
+
+```{python}
+def transform_coordinates(pair):
+    """
+    This function takes a pair of raster coordinates
+    and returns the geographic coordinates.
+    """
+
+    geographic_coordinates = my_raster_image.xy(pair[1], pair[0])
+
+    return geographic_coordinates
+```
+
+ - Now, for every shape in our `my_shapes` data we are going to convert
+ the coordinates, and then write the data to a geojson LineString. Then
+ we will append each shape to a list.
+
+```{python}
+my_shapes = shapes(water_index)
+
+# Create an empty dataframe
+output = []
+
+# Iterate over the shapes
+for river_shape in my_shapes:
+    coords = river_shape[0]['coordinates'][0]
+
+    # Transform the raster coordinates into geographic coordinates
+    geographic_coords = [transform_coordinates(pair) for pair in coords]
+
+    # Specify a geojson with the transformed coordinates
+    output.append({
+        'geometry': {
+            'type': 'LineString',
+            'coordinates': geographic_coords
+        },
+        'properties': {},
+    })
+
+print('Output contains {} shapes'.format(len(output)))
+```
+
+ - Now we can export the shape
+
+```{python}
+# data_to_write = gpd.GeoDataFrame.from_features(output, crs='epsg:32617')
+
+# data_to_write.to_file('river_shape.shp')
+```
+
+
+
